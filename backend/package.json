@@ -4,8 +4,12 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "nodemon src/server.js"
+    "start": "nodemon src/server.js",
+    "seed" : "node prisma/seed.js"
   },
+  "prisma": {
+  "seed": "node prisma/seed.js"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
