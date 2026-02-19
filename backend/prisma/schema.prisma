@@ -1,0 +1,116 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DB_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Orders {
+  id               String         @id @default(uuid())
+  created_by_id    String
+  additional_notes String?
+  updated_at       DateTime       @updatedAt
+  due_date         DateTime
+  status           OrderStatus    @default(PENDING)
+  created_at       DateTime       @default(now())
+  delivery         DeliveryStatus @default(PENDING)
+  name             String
+  phone_number     String
+  updated_by_id    String?
+  type             OrderType
+  order_items      OrderItems[]
+  payments         Payments[]
+  created_by       Staff          @relation("CreatedOrders", fields: [created_by_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updated_by       Staff?         @relation("UpdatedOrders", fields: [updated_by_id], references: [id], onDelete: SetNull, onUpdate: NoAction)
+}
+
+model ClothingType {
+  id              String          @id @default(uuid())
+  name            String          @unique()
+  measurements    Json
+  order_items     OrderItems[]
+  sub_order_items SubOrderItems[]
+}
+
+model OrderItems {
+  id               String          @id @default(uuid())
+  order_id         String
+  clothing_type_id String
+  price            Int
+  measurements     Json
+  clothing_type    ClothingType    @relation(fields: [clothing_type_id], references: [id])
+  order            Orders          @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  sub_order_items  SubOrderItems[]
+}
+
+model SubOrderItems {
+  id               String       @id @default(uuid())
+  order_item_id    String
+  clothing_type_id String
+  price            Int
+  measurements     Json
+  clothing_type    ClothingType @relation(fields: [clothing_type_id], references: [id])
+  order_item       OrderItems   @relation(fields: [order_item_id], references: [id], onDelete: Cascade)
+}
+
+model Payments {
+  id            String      @id @default(uuid())
+  order_id      String
+  amount        Int
+  mode          PaymentMode
+  reference     String?
+  updated_by_id String
+  created_at    DateTime    @default(now())
+  updated_at    DateTime    @updatedAt
+  isDeleted     Boolean     @default(false)
+  order         Orders      @relation(fields: [order_id], references: [id], onDelete: Cascade)
+  updated_by    Staff       @relation(fields: [updated_by_id], references: [id])
+}
+
+model BlacklistedToken {
+  id    String @id @default(uuid())
+  token String
+}
+
+model Staff {
+  id             String     @id() @default(uuid())
+  role           Role       @default(STAFF)
+  phone_number   String     @unique()
+  password       String
+  created_at     DateTime   @default(now())
+  first_name     String?
+  last_name      String?
+  created_orders Orders[]   @relation("CreatedOrders")
+  updated_orders Orders[]   @relation("UpdatedOrders")
+  Payments       Payments[]
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum OrderType {
+  INDIVIDUAL
+  GROUP
+}
+
+enum OrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum DeliveryStatus {
+  PENDING
+  DELIVERED
+}
+
+enum PaymentMode {
+  MPESA
+  CASH
+  BANK_TRANSFER
+}
