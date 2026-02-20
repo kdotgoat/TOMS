@@ -18,5 +18,9 @@ export const newEmployeeSchema = z.object({
     .regex(/^(?:07|01)\d{8}$/, {
     message: "Invalid phone number",
     }),
-    role: z.enum(["ADMIN", "BASIC"]).optional(),
+    role: z.enum(["ADMIN", "STAFF"]).optional(),
 });
+
+export const loginSchema = newEmployeeSchema.partial().extend({
+    password: z.string().nonempty()
+})
