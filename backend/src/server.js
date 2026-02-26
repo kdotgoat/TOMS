@@ -3,7 +3,7 @@ import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 
 import { connectDB, disconnectDB, prisma } from './utils/prisma.js';
-import { authRoutes,staffRoutes,clothingRoute,orderRoute,paymentRoute} from './routes/routes.js';
+import { authRoutes,staffRoutes,clothingRoute,orderRoute,paymentRoute,searchRoute, notificationRoute} from './routes/routes.js';
 dotenv.config();
 const app = express();
 
@@ -18,6 +18,8 @@ app.use("/api/staff", staffRoutes);
 app.use("/api/orders", orderRoute);
 app.use("/api/clothingTypes", clothingRoute);
 app.use("/api/payments", paymentRoute);
+app.use("/api/search", searchRoute);
+app.use("/api/notifications", notificationRoute);
 
 
 
