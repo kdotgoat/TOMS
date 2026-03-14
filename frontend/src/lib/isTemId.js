@@ -1,0 +1,1 @@
+export const isTempId = (id) => typeof id === "string" && id.includes("new");
