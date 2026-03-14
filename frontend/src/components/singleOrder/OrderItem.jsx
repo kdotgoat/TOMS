@@ -35,6 +35,10 @@ const OrderItem = ({ id, index, isSubOrder = false }) => {
 
   const item = findItem(orderItems, id, isSubOrder);
 
+  if (!item) {
+    return <div>Item not found</div>;
+  }
+
   const clothType = clothingTypeItems.find(
     (ct) => ct.value === item.clothingTypeId
   );
@@ -45,7 +49,6 @@ const OrderItem = ({ id, index, isSubOrder = false }) => {
         <div className="px-2 bg-primary w-fit rounded-md">{index + 1}</div>
       )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {!item && <div>Item not found</div>}
         <Select
           value={item.clothingTypeId}
           onValueChange={(val) => updateItem(item.id, "clothingTypeId", val)}
