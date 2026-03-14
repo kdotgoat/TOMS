@@ -1,6 +1,12 @@
 import { apiGet } from "@/api";
 import { create } from "zustand";
 
+const normalizeClothingTypeError = (errorMessage) => {
+  if (!errorMessage) return "Failed to load clothing types.";
+
+  return errorMessage;
+};
+
 export const useClothingTypeStore = create((set) => ({
   types: [],
   loading: false,

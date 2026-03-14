@@ -2,7 +2,7 @@ import { Button } from "../ui/button";
 import { Plus } from "lucide-react";
 import { useSingleOrderStore } from "@/zustand/singleOrderStore";
 import OrderItem from "./OrderItem";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useClothingTypeStore } from "@/zustand";
 import { toast } from "react-toastify";
 import { useAddNewOrder } from "@/hooks/singleOrder/useAddNewOrder";
@@ -13,6 +13,7 @@ const OrderItems = () => {
     useSingleOrderStore();
   const { getClothingTypes, loading: clothingTypesLoading, error: clothingTypesError, types } = useClothingTypeStore();
   const {addNewOrder, loading} = useAddNewOrder()
+  const hasLoadedClothingTypes = useRef(false);
 
   useEffect(() => {
     const loadClothingTypes = async () => {
