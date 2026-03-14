@@ -4,10 +4,6 @@ import { create } from "zustand";
 const normalizeClothingTypeError = (errorMessage) => {
   if (!errorMessage) return "Failed to load clothing types.";
 
-  if (errorMessage.toLowerCase().includes("failed to create clothing type")) {
-    return "Backend clothing-types endpoint is misconfigured (GET is invoking create logic), so clothing types cannot be fetched right now.";
-  }
-
   return errorMessage;
 };
 
