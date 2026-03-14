@@ -36,7 +36,6 @@ router.post("/", validateRequest(newOrderSchema), newOrder);
 router.get("/stats", orderStats);
 
 //  Orders
-router.post("/:id", validateRequest(), addOrderItem)
 router.get("/:id", getOrderById);
 router.patch("/:id", validateRequest(updateOrderSchema), updateOrder);
 router.delete("/:id", deleteOrder);

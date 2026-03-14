@@ -2,6 +2,13 @@ import { z } from 'zod';
 export const validateRequest = (schema) => {
   return (req, res, next) => {
     try {
+      if (!schema || typeof schema.parse !== "function") {
+        return res.status(500).json({
+          message: "Server validation schema is not configured.",
+          success: false,
+        });
+      }
+
       const parsed = schema.parse(req.body);
       req.body = parsed
       next();
