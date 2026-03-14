@@ -1,96 +1,101 @@
 import {prisma} from '../utils/prisma.js'
 import {compareSync}from 'bcrypt';
 
+
 export const orderStats = async (req, res) => {
-    try{
-        const all = await prisma.orders.count();
-        const completed = await prisma.orders.count({
-            where : {status : "COMPLETED"},
-        });
-        const inProgress = await prisma.orders.count({
-            where : {status : "IN_PROGRESS"},
-        });
-        const pending = await prisma.orders.count({
-            where : {delivery : "PENDING"},
-        });
-        const delivered = await prisma.orders.count({
-            where : {delivery: "DELIVERED"},
-        });
+  try {
+    const all = await prisma.orders.count();
+    const completed = await prisma.orders.count({
+      where: { status: "COMPLETED" },
+    });
+    const inProgress = await prisma.orders.count({
+      where: { status: "IN_PROGRESS" },
+    });
+    const delivered = await prisma.orders.count({
+      where: { delivery: "DELIVERED" },
+    });
+    const pendingDelivery = await prisma.orders.count({
+      where: { delivery: "PENDING" },
+    });
 
-        return res.status(200).json({
-            totalOrders : all,
-            completed,
-            inProgress,
-            pending,delivered
-        });
-    }
-    catch(error){
-        return res.status(500).json({
-            message : "Failed to get stats",
-            success : false
-        });
-    }
+    return res.status(200).json({
+      totalOrders: all,
+      completed,
+      inProgress,
+      delivered,
+      pendingDelivery,
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ message: "Failed to get stats", success: false });
+  }
 };
+
+// ===== Get All Orders
 export const getAllOrders = async (req, res) => {
-    try{
-        const page = parseInt(req.query.page) || 1;
-        const limit = 10;
-        const skip = (page - 1) * limit;
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = 10;
+    const skip = (page - 1) * limit;
 
-        const totalOrders = await prisma.orders.count();
+    const totalOrders = await prisma.orders.count();
 
-        const orders = await prisma.orders.findMany({
-            skip,
-            take :limit,
-            orderBy : { 
-                created_at : "desc",
+    const orders = await prisma.orders.findMany({
+      skip,
+      take: limit,
+      orderBy: {
+        created_at: "desc",
+      },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        status: true,
+        delivery: true,
+        order_items: {
+          select: {
+            price: true,
+            sub_order_items: {
+              select: {
+                price: true,
+              },
             },
-            select: {
-                id : true,
-                name: true,
-                type:true,
-                status: true,
-                delivery:true,
-                    order_items:{
-                    select : {
-                        price : true,
-                        sub_order_items : {
-                            select : {
-                                price : true,
-                            },
-                        },
-                    },
-                },
-                payments : {
-                    where : {
-                        isDeleted : false,
-                        amount : true, 
-                    },
-                },
-            },
-        });
-        
-        if(!orders || orders.length === 0){
-            return res.status(404).json({
-                message : "No orders found",
-                success : false
-            });
-        }
+          },
+        },
+        payments: {
+          where: { isDeleted: false },
+          select: {
+            amount: true,
+          },
+        },
+      },
+    });
 
-        const cleanOrders = orders.map((order) =>{
-            const totalPrice = order.order_items.reduce((acc, item) => {
-                const subTotal = item.sub_order_items.reduce(
-                    (subAcc, sub) => subAcc + sub.price,
-                    0
-                );
-                return acc + item.price + subTotal;
-            },0);
+    if (!orders || orders.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No orders found", success: false });
+    }
 
-            const totalPayments = orders.payments.reduce(
-                (acc,payment) => acc + payment.amount,0
-            );
+    // Shape the response: add totalPrice + totalPayments, drop itemized details
+    const cleanOrders = orders.map((order) => {
+      // Calculate total price from order_items + sub_order_items
+      const totalPrice = order.order_items.reduce((acc, item) => {
+        const subTotal = item.sub_order_items.reduce(
+          (subAcc, sub) => subAcc + sub.price,
+          0
+        );
+        return acc + item.price + subTotal;
+      }, 0);
 
-            return {
+      // Calculate total payments
+      const totalPayments = order.payments.reduce(
+        (acc, payment) => acc + payment.amount,
+        0
+      );
+
+      return {
         id: order.id,
         name: order.name,
         type: order.type,
@@ -98,117 +103,116 @@ export const getAllOrders = async (req, res) => {
         delivery: order.delivery,
         totalPrice,
         totalPayments,
-            };
-        });
+      };
+    });
 
-        const totalPages = Math.ceil(totalOrders / limit);
+    const totalPages = Math.ceil(totalOrders / limit);
 
-        return res.status(200).json({
-    success: true,
-    pagination: {
+    return res.status(200).json({
+      success: true,
+      pagination: {
         currentPage: page,
         totalPages,
         hasNextPage: page < totalPages,
         hasPrevPage: page > 1,
-    },
-    orders: cleanOrders,
+      },
+      orders: cleanOrders,
     });
-}
-catch (error) {
+  } catch (error) {
     res.status(500).json({ message: "Failed to get orders", success: false });
-}
+  }
 };
 
+// ===== Create New Order
 export const newOrder = async (req, res) => {
-try{
-    const{name,phoneNumber,type,orderItems,dueDate,additionalNotes} = req.body;
+  try {
+    const { name, phoneNumber, type, orderItems, dueDate, additionalNotes } =
+      req.body;
 
     const allClothingTypeIds = [
-        ...orderItems.map((i) => i.clothingTypeId),
-        ...orderItems.flatMap(
-            (i) => i.subOrder?.map((s) => s.clothingTypeId) || []
-        ),
+      ...orderItems.map((i) => i.clothingTypeId),
+      ...orderItems.flatMap(
+        (i) => i.subOrder?.map((s) => s.clothingTypeId) || []
+      ),
     ];
 
+    // Remove duplicates for validation
     const uniqueClothingTypeIds = [...new Set(allClothingTypeIds)];
 
     const existingTypes = await prisma.clothingType.findMany({
-    where: { id: { in: uniqueClothingTypeIds } },
+      where: { id: { in: uniqueClothingTypeIds } },
     });
 
     if (existingTypes.length !== uniqueClothingTypeIds.length) {
-    return res.status(400).json({
+      return res.status(400).json({
         success: false,
         message:
-        "One or more clothingTypeIds in orderItems or subOrders are invalid",
-    });
+          "One or more clothingTypeIds in orderItems or subOrders are invalid",
+      });
     }
 
+    // Create the order
     const createdOrder = await prisma.orders.create({
-        data : {
-            name,
-            phone_number : phoneNumber,
-            type,
-            additional_notes: additionalNotes || null,
-            due_date : new Date(dueDate),
-            created_by_id : req.user.id,
-                order_items: {
-                        create: orderItems.map((item) => ({
-                            clothing_type_id : item.clothingTypeId,
-                            price : item.price,
-                            measurements: item.measurements,
-                                sub_order_items : {
-                                    create : 
-                                    item.subOrder?.map((sub) => ({
-                                        clothing_type_id : sub.clothingTypeId,
-                                        price : sub.price,
-                                        measurements : sub.measurements
-                                    })) || [],
-                                },
-                        })),
-                },
-        },
-
-        include : {
-            order_items : {
-                include : {
-                    sub_order_items : true,
-                },
+      data: {
+        name,
+        phone_number: phoneNumber,
+        type,
+        additional_notes: additionalNotes || null,
+        due_date: new Date(dueDate),
+        created_by_id: req.user.id,
+        order_items: {
+          create: orderItems.map((item) => ({
+            clothing_type_id: item.clothingTypeId,
+            price: item.price,
+            measurements: item.measurements,
+            sub_order_items: {
+              create:
+                item.subOrder?.map((sub) => ({
+                  clothing_type_id: sub.clothingTypeId,
+                  price: sub.price,
+                  measurements: sub.measurements,
+                })) || [],
             },
+          })),
         },
+      },
+      include: {
+        order_items: {
+          include: {
+            sub_order_items: true,
+          },
+        },
+      },
     });
 
     return res.status(201).json({
-        message : "Order created successfully",
-        success : true,
-        order : createdOrder,
+      message: "Order created successfully",
+      success: true,
+      order: createdOrder,
     });
-
-
-}
-catch(error){
-return res.status(500).json({
-    message : "Failed to create order",
-    success : false,
-    error : error.message
-});
-}
+  } catch (error) {
+    return res.status(500).json({
+      message: "Failed to create order",
+      success: false,
+      error: error.message,
+    });
+  }
 };
 
+// ===== Get Order By Id
 export const getOrderById = async (req, res) => {
-    try{
-        const {id} = req.params;
+  try {
+    const { id } = req.params;
 
-        if(!id){
-            return res.status(400).json({
-                message : "Order id is missing",
-                success : false
-            });
-        }
+    if (!id) {
+      return res
+        .status(400)
+        .json({ message: "Order Id is missing", success: false });
+    }
 
-        const order = await prisma.orders.findUnique({
-            where : { id },
-            select: {
+    const order = await prisma.orders.findUnique({
+      where: { id },
+      select: {
         id: true,
         name: true,
         phone_number: true,
@@ -217,47 +221,46 @@ export const getOrderById = async (req, res) => {
         delivery: true,
         due_date: true,
         order_items: {
-            select: {
+          select: {
             id: true,
             clothing_type_id: true,
             price: true,
             measurements: true,
             sub_order_items: {
-                select: {
+              select: {
                 id: true,
                 clothing_type_id: true,
                 price: true,
                 measurements: true,
-                },
+              },
             },
-        },
+          },
         },
         payments: {
-        select: {
+          select: {
             amount: true,
+          },
         },
-        },
-    },
-        });
+      },
+    });
 
-        if(!order){
-            res.status(404).json({
-                message  : "Order not found",
-                success : false
-            });
-        }
+    if (!order) {
+      return res
+        .status(404)
+        .json({ message: "Order not found", success: false });
+    }
 
-        const totalPrice = order.order_items.reduce((acc, orderItem)=>{
-            const subTotal = orderItem.sub_order_items.reduce(
-                (subAcc, subOrderItem) => subAcc + subOrderItem.price,
+    const totalPrice = order.order_items.reduce((acc, orderItem) => {
+      const subTotal = orderItem.sub_order_items.reduce(
+        (subAcc, subOrderItem) => subAcc + subOrderItem.price,
         0
-    );
-    return acc + orderItem.price + subTotal;
+      );
+      return acc + orderItem.price + subTotal;
     }, 0);
 
     const totalPayment = order.payments.reduce(
-    (acc, payment) => acc + payment.amount,
-    0
+      (acc, payment) => acc + payment.amount,
+      0
     );
 
     const { payments, ...orderData } = order;
@@ -265,30 +268,31 @@ export const getOrderById = async (req, res) => {
     orderData.totalPayments = totalPayment;
 
     return res.status(200).json({ orderData, success: true });
-} catch (error) {
+  } catch (error) {
     res.status(500).json({
-        message: "Failed to get order",
-        error: error.message,
-        success: false,
+      message: "Failed to get order",
+      error: error.message,
+      success: false,
     });
-}     
+  }
+};
+
+// ===== Update Order
+export const updateOrder = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ...data } = req.body;
+
+    if (!id)
+      return res
+        .status(400)
+        .json({ message: "Missing order ID", success: false });
+
+    const updateData = {
+      updated_by_id: req.user.id,
     };
 
-export const updateOrder = async (req, res) => {
-    try{
-        const {id} = req.params;
-        const {...data} = req.body
-
-        if(!id){
-            return res.status(400).json({
-                messsage: "Missing order id",
-                success : false
-            });
-        }
-        const updateData = {
-            updated_by_id : req.user.id   };
-
-            if (data.name) updateData.name = data.name;
+    if (data.name) updateData.name = data.name;
     if (data.phoneNumber) updateData.phone_number = data.phoneNumber;
     if (data.type) updateData.type = data.type;
     if (data.status) updateData.status = data.status;
@@ -317,20 +321,18 @@ export const updateOrder = async (req, res) => {
       order: updated,
       success: true,
     });
-
-}
-    
-    catch (error) {
+  } catch (error) {
     res.status(500).json({
-        message: "Failed to update order",
-        error: error.message,
-        success: false,
+      message: "Failed to update order",
+      error: error.message,
+      success: false,
     });
-} 
+  }
 };
 
+// ===== Delete Order
 export const deleteOrder = async (req, res) => {
-try {
+  try {
     const { id } = req.params;
     const staffId = req.user.id;
     const { password } = req.body;
@@ -366,11 +368,12 @@ try {
       .json({ message: "Order deleted successfully", success: true });
   } catch (error) {
     return res
-    .status(500)
-    .json({ message: "Failed to delete order", success: false });
+      .status(500)
+      .json({ message: "Failed to delete order", success: false });
   }
 };
 
+// ===== Update Order Item
 export const updateOrderItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
@@ -423,6 +426,7 @@ export const updateOrderItem = async (req, res) => {
   }
 };
 
+// ===== Delete Order Item
 export const deleteOrderItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
@@ -453,6 +457,7 @@ export const deleteOrderItem = async (req, res) => {
   }
 };
 
+// ===== Update Sub Order Item
 export const updateSubOrderItems = async (req, res) => {
   try {
     const { id, itemId, subOrderId } = req.params;
@@ -494,6 +499,7 @@ export const updateSubOrderItems = async (req, res) => {
   }
 };
 
+// ===== Delete Sub Order Item
 export const deleteSubOrderItem = async (req, res) => {
   try {
     const { id, itemId, subOrderId } = req.params;
@@ -558,6 +564,7 @@ export const getPaymentsByOrderId = async (req, res) => {
   }
 };
 
+// ===== Add New Order Item
 export const addOrderItem = async (req, res) => {
   try {
     const { id } = req.params;
@@ -568,7 +575,9 @@ export const addOrderItem = async (req, res) => {
         .status(400)
         .json({ message: "Order ID is required", success: false });
     }
-     const orderExists = await prisma.orders.findUnique({
+
+    // Verify order exists
+    const orderExists = await prisma.orders.findUnique({
       where: { id },
       select: { id: true },
     });
@@ -578,6 +587,7 @@ export const addOrderItem = async (req, res) => {
         .status(404)
         .json({ message: "Order not found", success: false });
     }
+
     // Validate clothing type IDs
     const allClothingTypeIds = [
       clothingTypeId,
@@ -640,6 +650,7 @@ export const addOrderItem = async (req, res) => {
   }
 };
 
+// ===== Add New Sub-Order Item
 export const addSubOrderItem = async (req, res) => {
   try {
     const { id, itemId } = req.params;
