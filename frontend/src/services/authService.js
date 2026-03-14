@@ -16,6 +16,6 @@ export async function getCurrentUser() {
 }
 
 export async function changePassword (data) {
-    const res = await api.patch(`/auth/me`, data)
+    const res = await api.put(`/auth/updatePassword`, data)
     return res.data
 }
