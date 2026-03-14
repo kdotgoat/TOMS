@@ -7,6 +7,6 @@ const router = Router();
 router.use(isAuthenticated);
 
 router.post('/', adminOnly,newClothing);
-router.get('/', newClothing,getAllClothingTypes);
+router.get('/', getAllClothingTypes);
 
 export default router;

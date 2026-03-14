@@ -2,7 +2,14 @@ import {prisma} from '../utils/prisma.js';
 
 export const newClothing = async (req,res) => {
     try {
-        const {name} = req.body;
+        const { name, measurements } = req.body;
+
+    if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({
+            message: "Clothing type name is required",
+            success: false,
+        });
+    }
 
     const cleanName = name.trim().toLowerCase();
     const existingType = await prisma.clothingType.findFirst({
@@ -15,7 +22,10 @@ export const newClothing = async (req,res) => {
         });
     }
     await prisma.clothingType.create({
-        data : {name: cleanName},
+        data : {
+            name: cleanName,
+            measurements: Array.isArray(measurements) ? measurements : [],
+        },
     });
 
     return res.status(201).json({
@@ -32,7 +42,7 @@ export const newClothing = async (req,res) => {
 export const getAllClothingTypes = async (req, res) => {
     try{
         const clothingTypes = await prisma.clothingType.findMany({
-            where : {
+            select : {
                 id: true,
                 name: true,
                 measurements: true
@@ -46,7 +56,9 @@ export const getAllClothingTypes = async (req, res) => {
         }
         
         return res.status(200).json({
-            message : "Clothing types found", success : true
+            message : "Clothing types found",
+            success : true,
+            types: clothingTypes,
         });
     }
     catch(error){

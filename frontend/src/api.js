@@ -1,9 +1,18 @@
 import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL;
-console.log("MY API URL IS:", API_URL);
+const rawApiUrl = import.meta.env.VITE_API_URL?.trim();
+
+const normalizeApiBaseUrl = (url) => {
+  if (!url) return "/api";
+
+  const withoutTrailingSlash = url.replace(/\/+$/, "");
+  return withoutTrailingSlash.endsWith("/api")
+    ? withoutTrailingSlash
+    : `${withoutTrailingSlash}/api`;
+};
+
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: normalizeApiBaseUrl(rawApiUrl),
   withCredentials: true, // so you don’t have to repeat this
 });
 
@@ -43,4 +52,3 @@ export const apiGet = (url, config) => request("get", url, null, config);
 export const apiPost = (url, data, config) => request("post", url, data, config);
 export const apiPatch = (url, data, config) => request("patch", url, data, config);
 export const apiDelete = (url, data={}, config) => request("delete", url, data, config);
-

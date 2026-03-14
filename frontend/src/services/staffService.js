@@ -1,7 +1,7 @@
 import api from "./api";
 
 export async function fetchStaff() {
-  const res = await api.get('/staff')
+  const res = await api.get('/staff/getAllStaff')
   return res.data
 }
 
