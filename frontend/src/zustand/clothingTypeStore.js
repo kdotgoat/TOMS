@@ -13,16 +13,45 @@ export const useClothingTypeStore = create((set) => ({
 
     const [res, error] = await apiGet("/clothingTypes");
 
-    if (error) return set({ loading: false, error });
+    if (error) {
+      set({ loading: false, error, types: [] });
+      return { success: false, error };
+    }
+
+    const rawTypes =
+      (Array.isArray(res?.types) && res.types) ||
+      (Array.isArray(res?.clothingTypes) && res.clothingTypes) ||
+      [];
+
+    const types = rawTypes
+      .filter((t) => t?.id && t?.name)
+      .map((t) => ({
+        value: t.id,
+        title: t.name,
+        mearsurementConfig: Array.isArray(t.measurements) ? t.measurements : [],
+      }));
+
+    if (types.length === 0) {
+      const noTypesMessage =
+        res?.message || "No clothing types were returned by the backend.";
+
+      set({
+        loading: false,
+        error: noTypesMessage,
+        message: noTypesMessage,
+        types: [],
+      });
+
+      return { success: false, error: noTypesMessage };
+    }
 
     set({
       loading: false,
       message: res.message,
-      types: res.types.map((t) => ({
-        value: t.id,
-        title: t.name,
-        mearsurementConfig: t.measurements,
-      })),
+      error: null,
+      types,
     });
+
+    return { success: true, types };
   },
 }));
