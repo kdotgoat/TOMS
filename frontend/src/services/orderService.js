@@ -34,17 +34,17 @@ export async function deleteOrderItem(orderId, itemId) {
 }
 
 export async function addSubOrderItem(orderId, itemId, subOrderData) {
-    const res = await api.post(`orders/${orderId}/items/${itemId}/suborders`, subOrderData)
+    const res = await api.post(`/orders/${orderId}/items/${itemId}/suborders`, subOrderData)
     return res.data
 }
 
 export async function updateSubOrderItem(orderId, itemId, subOrderId, subOrderData) {
-    const res = await api.patch(`/orders/${orderId}/items/${itemId}/subOrders/${subOrderId}`, subOrderData)
+    const res = await api.patch(`/orders/${orderId}/items/${itemId}/suborders/${subOrderId}`, subOrderData)
     return res.data
 }
 
 export async function deleteSubOrderItem(orderId, itemId, subOrderId) {
-    const res = await api.delete(`/orders/${orderId}/items/${itemId}/subOrders/${subOrderId}`)
+    const res = await api.delete(`/orders/${orderId}/items/${itemId}/suborders/${subOrderId}`)
     return res.data
 }
 

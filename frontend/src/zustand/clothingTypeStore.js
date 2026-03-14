@@ -11,7 +11,7 @@ export const useClothingTypeStore = create((set) => ({
   getClothingTypes: async () => {
     set({ loading: true, error: null, message: null });
 
-    const [res, error] = await apiGet("/clothing");
+    const [res, error] = await apiGet("/clothingTypes");
 
     if (error) return set({ loading: false, error });
 
