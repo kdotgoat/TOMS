@@ -16,9 +16,6 @@ const OrderItems = () => {
   const hasLoadedClothingTypes = useRef(false);
 
   useEffect(() => {
-    if (hasLoadedClothingTypes.current) return;
-    hasLoadedClothingTypes.current = true;
-
     const loadClothingTypes = async () => {
       const res = await getClothingTypes();
 

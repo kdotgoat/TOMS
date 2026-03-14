@@ -20,10 +20,8 @@ export const useClothingTypeStore = create((set) => ({
     const [res, error] = await apiGet("/clothingTypes");
 
     if (error) {
-      const normalizedError = normalizeClothingTypeError(error);
-
-      set({ loading: false, error: normalizedError, types: [] });
-      return { success: false, error: normalizedError };
+      set({ loading: false, error, types: [] });
+      return { success: false, error };
     }
 
     const rawTypes =
